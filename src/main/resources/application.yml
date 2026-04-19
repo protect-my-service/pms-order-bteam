@@ -21,6 +21,7 @@ spring:
         format_sql: true
         show_sql: true
         default_batch_fetch_size: 100
+      jakarta.persistence.lock.timeout: 3000
     open-in-view: false
 
   rabbitmq:
@@ -34,6 +35,12 @@ spring:
         retry:
           enabled: true
           max-attempts: 3
+
+order:
+  cancel:
+    allowed-hours: 1
+    allow-partial: true
+    max-items-per-request: 50
 
 logging:
   level:

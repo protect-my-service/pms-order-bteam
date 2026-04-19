@@ -20,6 +20,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -32,6 +33,7 @@ public class PaymentService {
     private final ProductRepository productRepository;
     private final ExternalPaymentClient externalPaymentClient;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final Clock clock;
 
     @Transactional
     public PaymentResponse requestPayment(Long memberId, Long orderId) {
@@ -84,7 +86,7 @@ public class PaymentService {
                 .paymentKey(paymentKey)
                 .amount(order.getTotalAmount())
                 .build();
-        payment.approve();
+        payment.approve(LocalDateTime.now(clock));
         paymentRepository.save(payment);
 
         order.changeStatus(OrderStatus.PAID);
@@ -108,7 +110,9 @@ public class PaymentService {
         Payment payment = paymentRepository.findByPaymentKey(paymentKey)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
 
-        Order order = payment.getOrder();
+        Order order = orderRepository.findByIdForUpdate(payment.getOrder().getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
         if (!order.getMember().getId().equals(memberId)) {
             throw new BusinessException(ErrorCode.ORDER_NOT_FOUND);
         }
@@ -123,15 +127,18 @@ public class PaymentService {
         order.changeStatus(OrderStatus.REFUNDED);
 
         for (var item : order.getItems()) {
+            int remaining = item.getActiveQuantity();
+            if (remaining <= 0) continue;
             Product product = productRepository.findByIdWithLock(item.getProduct().getId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
-            product.restoreStock(item.getQuantity());
+            product.restoreStock(remaining);
+            item.cancelQuantity(remaining);
         }
 
         return PaymentCancelResponse.builder()
                 .paymentKey(paymentKey)
                 .status(payment.getStatus().name())
-                .cancelledAt(LocalDateTime.now())
+                .cancelledAt(LocalDateTime.now(clock))
                 .build();
     }
 }

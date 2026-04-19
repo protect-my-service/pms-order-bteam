@@ -42,7 +42,8 @@ public class OrderController {
     @PostMapping("/{orderId}/cancel")
     public OrderCancelResponse cancelOrder(
             @RequestHeader("X-Member-Id") Long memberId,
-            @PathVariable Long orderId) {
-        return orderService.cancelOrder(memberId, orderId);
+            @PathVariable Long orderId,
+            @Valid @RequestBody(required = false) CancelOrderRequest request) {
+        return orderService.cancelOrder(memberId, orderId, request);
     }
 }

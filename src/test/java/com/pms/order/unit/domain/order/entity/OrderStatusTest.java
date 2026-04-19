@@ -34,7 +34,7 @@ class OrderStatusTest {
         }
 
         @ParameterizedTest
-        @EnumSource(value = OrderStatus.class, names = {"PREPARING", "SHIPPING", "DELIVERED", "REFUND_REQUESTED", "REFUNDED", "RETURNED"})
+        @EnumSource(value = OrderStatus.class, names = {"PREPARING", "SHIPPING", "DELIVERED", "PARTIALLY_CANCELLED", "REFUND_REQUESTED", "REFUNDED", "RETURNED"})
         @DisplayName("허용되지 않은 상태로는 전이할 수 없다")
         void should_reject_invalid_transition(OrderStatus invalidTarget) {
             assertThatThrownBy(() -> OrderStatus.PENDING.validateTransitionTo(invalidTarget))
@@ -69,6 +69,54 @@ class OrderStatusTest {
         void should_transition_to_cancelled() {
             assertThatNoException()
                     .isThrownBy(() -> OrderStatus.PAID.validateTransitionTo(OrderStatus.CANCELLED));
+        }
+
+        @Test
+        @DisplayName("PARTIALLY_CANCELLED로 전이할 수 있다 (부분 취소)")
+        void should_transition_to_partially_cancelled() {
+            assertThatNoException()
+                    .isThrownBy(() -> OrderStatus.PAID.validateTransitionTo(OrderStatus.PARTIALLY_CANCELLED));
+        }
+    }
+
+    @Nested
+    @DisplayName("PARTIALLY_CANCELLED 상태에서")
+    class FromPartiallyCancelled {
+
+        @Test
+        @DisplayName("PARTIALLY_CANCELLED로 다시 전이할 수 있다 (추가 부분 취소)")
+        void should_transition_to_partially_cancelled_again() {
+            assertThatNoException()
+                    .isThrownBy(() -> OrderStatus.PARTIALLY_CANCELLED.validateTransitionTo(OrderStatus.PARTIALLY_CANCELLED));
+        }
+
+        @Test
+        @DisplayName("CANCELLED로 전이할 수 있다 (남은 전체 취소)")
+        void should_transition_to_cancelled() {
+            assertThatNoException()
+                    .isThrownBy(() -> OrderStatus.PARTIALLY_CANCELLED.validateTransitionTo(OrderStatus.CANCELLED));
+        }
+
+        @Test
+        @DisplayName("PREPARING으로 전이할 수 있다 (남은 항목 배송 준비)")
+        void should_transition_to_preparing() {
+            assertThatNoException()
+                    .isThrownBy(() -> OrderStatus.PARTIALLY_CANCELLED.validateTransitionTo(OrderStatus.PREPARING));
+        }
+
+        @Test
+        @DisplayName("REFUND_REQUESTED로 전이할 수 있다 (남은 금액 환불 요청)")
+        void should_transition_to_refund_requested() {
+            assertThatNoException()
+                    .isThrownBy(() -> OrderStatus.PARTIALLY_CANCELLED.validateTransitionTo(OrderStatus.REFUND_REQUESTED));
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = OrderStatus.class, names = {"PENDING", "PAID", "SHIPPING", "DELIVERED", "REFUNDED", "RETURNED"})
+        @DisplayName("허용되지 않은 상태로는 전이할 수 없다")
+        void should_reject_invalid_transition(OrderStatus invalidTarget) {
+            assertThatThrownBy(() -> OrderStatus.PARTIALLY_CANCELLED.validateTransitionTo(invalidTarget))
+                    .isInstanceOf(BusinessException.class);
         }
     }
 

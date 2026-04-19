@@ -12,13 +12,15 @@ public enum OrderStatus {
     SHIPPING,
     DELIVERED,
     CANCELLED,
+    PARTIALLY_CANCELLED,
     REFUND_REQUESTED,
     REFUNDED,
     RETURNED;
 
     private static final java.util.Map<OrderStatus, Set<OrderStatus>> TRANSITIONS = java.util.Map.of(
             PENDING, Set.of(PAID, CANCELLED),
-            PAID, Set.of(PREPARING, REFUND_REQUESTED, CANCELLED),
+            PAID, Set.of(PREPARING, REFUND_REQUESTED, CANCELLED, PARTIALLY_CANCELLED),
+            PARTIALLY_CANCELLED, Set.of(PARTIALLY_CANCELLED, CANCELLED, PREPARING, REFUND_REQUESTED),
             PREPARING, Set.of(SHIPPING),
             SHIPPING, Set.of(DELIVERED),
             DELIVERED, Set.of(RETURNED),

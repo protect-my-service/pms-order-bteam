@@ -21,6 +21,13 @@ public enum ErrorCode {
     PAYMENT_FAILED(HttpStatus.BAD_GATEWAY, "PAYMENT_FAILED", "외부 결제 시스템 실패입니다."),
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "결제 정보를 찾을 수 없습니다."),
     DUPLICATE_REQUEST(HttpStatus.CONFLICT, "DUPLICATE_REQUEST", "중복 요청입니다."),
+    CANCEL_WINDOW_EXPIRED(HttpStatus.CONFLICT, "CANCEL_WINDOW_EXPIRED", "취소 가능 시간이 지났습니다."),
+    INVALID_CANCEL_QUANTITY(HttpStatus.BAD_REQUEST, "INVALID_CANCEL_QUANTITY", "취소 수량이 유효하지 않습니다."),
+    CANCEL_QUANTITY_EXCEEDS_REMAINING(HttpStatus.CONFLICT, "CANCEL_QUANTITY_EXCEEDS_REMAINING", "취소 가능 수량을 초과했습니다."),
+    INVALID_CANCEL_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_CANCEL_REQUEST", "취소 요청이 유효하지 않습니다."),
+    ORDER_ITEM_NOT_IN_ORDER(HttpStatus.FORBIDDEN, "ORDER_ITEM_NOT_IN_ORDER", "해당 주문의 상품이 아닙니다."),
+    PARTIAL_CANCEL_DISABLED(HttpStatus.CONFLICT, "PARTIAL_CANCEL_DISABLED", "부분 취소가 비활성화되어 있습니다."),
+    REFUND_EXCEEDS_PAYMENT(HttpStatus.CONFLICT, "REFUND_EXCEEDS_PAYMENT", "환불 요청액이 결제 금액을 초과합니다."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "서버 내부 오류입니다.");
 
     private final HttpStatus httpStatus;

@@ -23,18 +23,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PaymentService 단위 테스트")
@@ -54,6 +62,9 @@ class PaymentServiceTest {
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
+    @Spy
+    private Clock clock = Clock.fixed(Instant.parse("2026-04-19T10:00:00Z"), ZoneOffset.UTC);
+
     private Member member;
     private Product product;
 
@@ -70,7 +81,6 @@ class PaymentServiceTest {
         @Test
         @DisplayName("PENDING 상태의 주문에 대해 결제가 성공하면 PAID로 전이된다")
         void should_approve_payment_and_transition_to_paid() {
-            // given
             Order order = TestFixture.order(1L, "ORD-20250401-000001", member, OrderStatus.PENDING, BigDecimal.valueOf(29900));
 
             given(orderRepository.findByIdAndMemberId(1L, 1L)).willReturn(Optional.of(order));
@@ -79,10 +89,8 @@ class PaymentServiceTest {
                     .willReturn(Map.of("paymentKey", "PAY-test-1234", "amount", BigDecimal.valueOf(29900), "status", "APPROVED"));
             given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> invocation.getArgument(0));
 
-            // when
             com.pms.order.domain.payment.dto.PaymentResponse result = paymentService.requestPayment(1L, 1L);
 
-            // then
             assertThat(result.getPaymentKey()).isEqualTo("PAY-test-1234");
             assertThat(result.getStatus()).isEqualTo("APPROVED");
             assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
@@ -96,12 +104,10 @@ class PaymentServiceTest {
         @Test
         @DisplayName("PENDING이 아닌 주문에 결제를 시도하면 예외가 발생한다")
         void should_throw_when_order_not_pending() {
-            // given
             Order order = TestFixture.order(1L, "ORD-20250401-000001", member, OrderStatus.PAID, BigDecimal.valueOf(29900));
 
             given(orderRepository.findByIdAndMemberId(1L, 1L)).willReturn(Optional.of(order));
 
-            // when & then
             assertThatThrownBy(() -> paymentService.requestPayment(1L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
@@ -111,14 +117,12 @@ class PaymentServiceTest {
         @Test
         @DisplayName("이미 결제가 진행된 주문에 중복 결제를 시도하면 예외가 발생한다")
         void should_throw_when_duplicate_payment() {
-            // given
             Order order = TestFixture.order(1L, "ORD-20250401-000001", member, OrderStatus.PENDING, BigDecimal.valueOf(29900));
             Payment existingPayment = TestFixture.payment(1L, order, "PAY-existing", BigDecimal.valueOf(29900));
 
             given(orderRepository.findByIdAndMemberId(1L, 1L)).willReturn(Optional.of(order));
             given(paymentRepository.findByOrderIdAndStatusNot(eq(1L), any())).willReturn(Optional.of(existingPayment));
 
-            // when & then
             assertThatThrownBy(() -> paymentService.requestPayment(1L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
@@ -128,7 +132,6 @@ class PaymentServiceTest {
         @Test
         @DisplayName("외부 결제 실패 시 주문 상태가 CANCELLED로 전이된다")
         void should_cancel_order_when_payment_fails() {
-            // given
             Order order = TestFixture.order(1L, "ORD-20260409-000001", member, OrderStatus.PENDING, BigDecimal.valueOf(29900));
             OrderItem orderItem = TestFixture.orderItem(1L, order, product, 2);
             order.addItem(orderItem);
@@ -140,7 +143,6 @@ class PaymentServiceTest {
             given(productRepository.findByIdWithLock(10L)).willReturn(Optional.of(product));
             given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> invocation.getArgument(0));
 
-            // when & then
             assertThatThrownBy(() -> paymentService.requestPayment(1L, 1L))
                     .isInstanceOf(BusinessException.class);
 
@@ -150,7 +152,6 @@ class PaymentServiceTest {
         @Test
         @DisplayName("외부 결제 실패 시 OrderCancelledEvent가 발행된다")
         void should_publish_order_cancelled_event_when_payment_fails() {
-            // given
             Order order = TestFixture.order(1L, "ORD-20260409-000001", member, OrderStatus.PENDING, BigDecimal.valueOf(29900));
             OrderItem orderItem = TestFixture.orderItem(1L, order, product, 1);
             order.addItem(orderItem);
@@ -162,11 +163,9 @@ class PaymentServiceTest {
             given(productRepository.findByIdWithLock(10L)).willReturn(Optional.of(product));
             given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> invocation.getArgument(0));
 
-            // when
             assertThatThrownBy(() -> paymentService.requestPayment(1L, 1L))
                     .isInstanceOf(BusinessException.class);
 
-            // then
             var eventCaptor = org.mockito.ArgumentCaptor.forClass(Object.class);
             verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
             assertThat(eventCaptor.getValue()).isInstanceOf(OrderCancelledEvent.class);
@@ -179,7 +178,6 @@ class PaymentServiceTest {
         @Test
         @DisplayName("외부 결제 실패 시 재고가 복원되고 실패 결제 기록이 생성된다")
         void should_restore_stock_and_record_failure_when_payment_fails() {
-            // given
             Order order = TestFixture.order(1L, "ORD-20250401-000001", member, OrderStatus.PENDING, BigDecimal.valueOf(29900));
             OrderItem orderItem = TestFixture.orderItem(1L, order, product, 2);
             order.addItem(orderItem);
@@ -193,7 +191,6 @@ class PaymentServiceTest {
             given(productRepository.findByIdWithLock(10L)).willReturn(Optional.of(product));
             given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> invocation.getArgument(0));
 
-            // when & then
             assertThatThrownBy(() -> paymentService.requestPayment(1L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
@@ -211,23 +208,21 @@ class PaymentServiceTest {
         @Test
         @DisplayName("결제를 취소하면 환불 처리되고 재고가 복원된다")
         void should_refund_and_restore_stock() {
-            // given
             Order order = TestFixture.order(1L, "ORD-20250401-000001", member, OrderStatus.PAID, BigDecimal.valueOf(29900));
             OrderItem orderItem = TestFixture.orderItem(1L, order, product, 1);
             order.addItem(orderItem);
             Payment payment = TestFixture.payment(1L, order, "PAY-test-key", BigDecimal.valueOf(29900));
-            payment.approve();
+            payment.approve(LocalDateTime.ofInstant(Instant.parse("2026-04-19T09:30:00Z"), ZoneOffset.UTC));
 
             int stockBefore = product.getStockQuantity();
 
             given(paymentRepository.findByPaymentKey("PAY-test-key")).willReturn(Optional.of(payment));
+            given(orderRepository.findByIdForUpdate(1L)).willReturn(Optional.of(order));
             given(productRepository.findByIdWithLock(10L)).willReturn(Optional.of(product));
             doNothing().when(externalPaymentClient).cancelPayment("PAY-test-key");
 
-            // when
             com.pms.order.domain.payment.dto.PaymentCancelResponse result = paymentService.cancelPayment(1L, "PAY-test-key", "단순 변심");
 
-            // then
             assertThat(result.getStatus()).isEqualTo("CANCELLED");
             assertThat(product.getStockQuantity()).isEqualTo(stockBefore + 1);
             assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUNDED);
@@ -236,13 +231,12 @@ class PaymentServiceTest {
         @Test
         @DisplayName("다른 회원의 결제를 취소하려 하면 예외가 발생한다")
         void should_throw_when_different_member_tries_to_cancel() {
-            // given
             Order order = TestFixture.order(1L, "ORD-20250401-000001", member, OrderStatus.PAID, BigDecimal.valueOf(29900));
             Payment payment = TestFixture.payment(1L, order, "PAY-test-key", BigDecimal.valueOf(29900));
 
             given(paymentRepository.findByPaymentKey("PAY-test-key")).willReturn(Optional.of(payment));
+            given(orderRepository.findByIdForUpdate(1L)).willReturn(Optional.of(order));
 
-            // when & then
             assertThatThrownBy(() -> paymentService.cancelPayment(999L, "PAY-test-key", "단순 변심"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
