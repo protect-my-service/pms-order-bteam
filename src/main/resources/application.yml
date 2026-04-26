@@ -2,10 +2,10 @@ server:
   port: 8080
 
 spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/pms_order
-    username: pms
-    password: pms1234
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
@@ -18,17 +18,13 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
-        show_sql: true
+        format_sql: false
+        show_sql: false
         default_batch_fetch_size: 100
       jakarta.persistence.lock.timeout: 3000
     open-in-view: false
 
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
     listener:
       simple:
         acknowledge-mode: auto
@@ -41,8 +37,3 @@ order:
     allowed-hours: 1
     allow-partial: true
     max-items-per-request: 50
-
-logging:
-  level:
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql: TRACE

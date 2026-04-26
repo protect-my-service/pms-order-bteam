@@ -1,0 +1,25 @@
+server:
+  port: ${APP_PORT:8080}
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pms_order}
+    username: ${DB_USERNAME:pms}
+    password: ${DB_PASSWORD:pms1234}
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USERNAME:guest}
+    password: ${RABBIT_PASSWORD:guest}
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
