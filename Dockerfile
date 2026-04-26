@@ -11,16 +11,18 @@ COPY build.gradle.kts .
 COPY settings.gradle.kts .
 COPY src src
 
-# 빌드 명령어 실행 
-RUN ./gradlew build -x test
+# 빌드 명령어 실행
+RUN dnf install -y findutils && ./gradlew build -x test
 
 # 실행환경 베이스 이미지 지정
-FROM amazoncorretto:21-al2023-jre
+FROM amazoncorretto:21-al2023-headless
 WORKDIR /app
 
 # 보안을 위한 Non-root 유저 생성
-RUN groupadd -g 1000 appuser && \
-    useradd -u 1000 -g appuser -m appuser
+RUN dnf install -y shadow-utils && \
+    groupadd -g 1000 appuser && \
+    useradd -u 1000 -g appuser -m appuser && \
+    dnf clean all
 USER appuser
 
 # 빌드 결과물 복사
