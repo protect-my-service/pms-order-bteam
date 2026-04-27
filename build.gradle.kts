@@ -31,7 +31,6 @@ dependencies {
     implementation("io.awspring.cloud:spring-cloud-aws-starter-parameter-store")
 
     implementation("org.flywaydb:flyway-core")
-    implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
