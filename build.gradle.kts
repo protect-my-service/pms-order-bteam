@@ -27,7 +27,11 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation(platform("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.1"))
+    implementation("io.awspring.cloud:spring-cloud-aws-starter-parameter-store")
 
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 

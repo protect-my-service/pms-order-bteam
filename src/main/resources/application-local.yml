@@ -19,6 +19,11 @@ spring:
     username: ${RABBIT_USERNAME:guest}
     password: ${RABBIT_PASSWORD:guest}
 
+management:
+  endpoint:
+    health:
+      show-details: always
+
 logging:
   level:
     org.hibernate.SQL: DEBUG
