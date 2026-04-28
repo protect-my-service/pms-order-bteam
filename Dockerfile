@@ -18,7 +18,7 @@ RUN dnf install -y findutils && ./gradlew build -x test
 FROM amazoncorretto:21-al2023-headless
 WORKDIR /app
 
-# 보안을 위한 Non-root 유저 생성
+# shadow-utils: useradd용 (curl은 베이스 이미지에 이미 포함됨 → docker-compose healthcheck 가능)
 RUN dnf install -y shadow-utils && \
     groupadd -g 1000 appuser && \
     useradd -u 1000 -g appuser -m appuser && \
@@ -28,9 +28,7 @@ USER appuser
 # 빌드 결과물 복사
 COPY --from=builder /app/build/libs/*-SNAPSHOT.jar app.jar
 
-# HEALTHCHECK 추가
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD curl -f http://localhost:8080/actuator/health/readiness || exit 1
+# HEALTHCHECK는 docker-compose.deploy.yml 레벨에서 정의 (SERVER_PORT 가변 처리 위해)
 
 # JVM 옵션 적용
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=60.0", "-jar", "app.jar"]

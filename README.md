@@ -278,3 +278,64 @@ curl -X POST http://localhost:8080/api/v1/payments \
 curl -X POST http://localhost:8080/api/v1/orders/1/cancel \
   -H "X-Member-Id: 1"
 ```
+
+---
+
+## Deployment (EC2 + nginx Blue/Green)
+
+이 레포는 **EC2 1대 안에서의 무중단 Blue/Green 자산**까지를 책임진다. 2대 EC2에 대한 롤링 오케스트레이션(ALB deregister/register, 인스턴스 순회)은 별도 레포 [`bteam-jenkins`](../bteam-jenkins)가 담당한다.
+
+### 배포 토폴로지
+
+```
+ALB ──► EC2 (nginx :80) ──► blue:8087  (active)
+                          └► green:8088 (standby, 다음 배포 시 새 이미지)
+```
+
+배포 1회 = `nginx upstream`을 blue ↔ green 으로 스왑 + reload. 컨테이너 자체는 살아있어 트래픽 끊김 없음.
+
+### 사전 조건
+
+- EC2: Docker, docker compose plugin, awscli v2 설치. ECR pull 권한 IAM Role 부여.
+- ALB Target Group health check path: **`/actuator/health/readiness`** (deregistration_delay 30~60초 권장).
+- Jenkins ↔ EC2 SSH 도달성: 같은 VPC / SSM Session Manager / bastion 중 하나 필수.
+- EC2의 `~/app/.env` 파일은 **운영자가 1회 수동 작성** (오케스트레이터가 덮어쓰지 않음).
+
+### 환경변수 (`.env`)
+
+`.env.example` 참고. 키 누락 시 Spring 부팅 실패(fail-fast).
+
+| 키 | 설명 |
+|---|---|
+| `SPRING_PROFILES_ACTIVE` | `staging` 또는 `prod` |
+| `DB_URL` | `jdbc:postgresql://<host>:5432/pms_order` |
+| `DB_USERNAME` / `DB_PASSWORD` | RDS 자격증명 |
+| `RABBIT_HOST` / `RABBIT_PORT` | 기본 5672 |
+| `RABBIT_USERNAME` / `RABBIT_PASSWORD` | RabbitMQ 자격증명 |
+
+### 오케스트레이터 인터페이스 (`bteam-jenkins`가 호출)
+
+| 항목 | 계약 |
+|---|---|
+| 동기화 대상 | `docker-compose.deploy.yml` → `~/app/docker-compose.yml`, `nginx/` → `~/app/nginx/`, `scripts/` → `~/app/scripts/` |
+| 사전 환경변수 | `ECR_REPO`, `IMAGE_TAG`, `SPRING_PROFILES_ACTIVE` (deploy.sh 호출 직전 export) |
+| 사전 환경파일 | `~/app/.env` (운영자 사전 작성) |
+| 호출 순서 | `deploy.sh /actuator/health/readiness` → ALB healthy 검증 → `stop-old-color.sh <old>` |
+| `deploy.sh` 종료 코드 | 0 = 새 색상 활성화 성공 (stdout 마지막 줄 = old color) / 1 = 실패 (이전 색상 자동 복구됨, ALB 영향 없음) |
+| ALB healthy 실패 시 롤백 | 오케스트레이터가 `nginx/templates/upstream-<old>.conf` → `nginx/conf.d/upstream.conf` 덮어쓰고 nginx reload. `stop-old-color.sh` 호출하지 않음 |
+
+### 운영 주의사항
+
+- **2대 EC2 롤링 = 배포 중 처리 용량 50% 감소**. 부하 높은 시간대 배포 금지.
+- **DB 변경은 backward-compatible** (expand → deploy → contract). Flyway 도입은 별도 트랙.
+- 배포 직후 `docker logs pms-blue / pms-green` 으로 active/standby 상태 확인 가능. `~/app/state/active_color` 파일도 확인.
+- nginx config 변경 시 반드시 `docker compose exec nginx nginx -t` 로 검증. deploy.sh가 자동으로 수행하지만 수동 변경 후엔 잊지 말 것.
+
+### 로컬 검증 절차
+
+1. 로컬에서 임시 ECR 태그로 이미지 빌드/태깅 후 `docker compose -f docker-compose.deploy.yml up -d`
+2. `curl localhost/actuator/health/readiness` → 200
+3. `IMAGE_TAG=v2 ECR_REPO=<...> ./scripts/deploy.sh` 두 번 실행 → blue↔green 순환 확인
+4. 일부러 readiness 실패하는 이미지로 배포 → deploy.sh fail, 이전 색상 그대로 살아있음 확인
+5. `nginx/templates/upstream-blue.conf`에 syntax 에러 주입 → `nginx -t` 실패 시 자동 롤백 확인
+

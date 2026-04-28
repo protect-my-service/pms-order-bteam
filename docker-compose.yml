@@ -1,3 +1,5 @@
+# 로컬 개발용 인프라(PostgreSQL + RabbitMQ) 전용 compose.
+# 운영(EC2 nginx + blue/green) 배포는 docker-compose.deploy.yml 사용.
 version: '3.8'
 services:
   postgres:

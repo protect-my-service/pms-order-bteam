@@ -41,5 +41,11 @@ application-prod.properties
 *.env
 .env
 
+# ===== Deployment runtime state =====
+state/
+
+# ===== Claude internal =====
+.claude/
+
 # ===== Test =====
 /test-output/
