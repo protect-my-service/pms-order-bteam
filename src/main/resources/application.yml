@@ -55,6 +55,15 @@ spring:
           enabled: true
           max-attempts: 3
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  metrics:
+    tags:
+      application: pms-order
+
 order:
   cancel:
     allowed-hours: 1
