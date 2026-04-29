@@ -1,0 +1,34 @@
+# prod profile.
+# AWS Parameter Store(/pms-order/prod/) 를 single source of truth 로 사용한다.
+# spring-cloud-aws-starter-parameter-store 가 prefix 하위 파라미터를 읽어
+# Spring property 로 매핑한다 (예: /pms-order/prod/db/url -> property db.url).
+#
+# 본 파일은 시크릿을 직접 담지 않는다 — placeholder 와 import 선언만 두고,
+# 실제 값은 SSM 에서 런타임에 주입된다.
+
+spring:
+  config:
+    import: aws-parameterstore:/pms-order/prod/
+
+  # application.yml 의 ${DB_URL} 등 placeholder 가 SSM 으로 채워지는 db.* 와
+  # relaxed binding 으로 매칭되지만, prod 에서는 명시 매핑으로 의도를 분명히 한다.
+  datasource:
+    url: ${db.url}
+    username: ${db.username}
+    password: ${db.password}
+
+  rabbitmq:
+    host: ${rabbit.host:}
+    port: ${rabbit.port:5672}
+    username: ${rabbit.username:}
+    password: ${rabbit.password:}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+
+logging:
+  level:
+    root: INFO
+    com.pms.order: INFO
