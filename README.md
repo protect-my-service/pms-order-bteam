@@ -320,8 +320,9 @@ ALB ──► EC2 (nginx :80) ──► blue:8087  (active)
 | 동기화 대상 | `docker-compose.deploy.yml` → `~/app/docker-compose.yml`, `nginx/` → `~/app/nginx/`, `scripts/` → `~/app/scripts/` |
 | 사전 환경변수 | `ECR_REPO`, `IMAGE_TAG`, `SPRING_PROFILES_ACTIVE` (deploy.sh 호출 직전 export) |
 | 사전 환경파일 | `~/app/.env` (운영자 사전 작성) |
-| 호출 순서 | `deploy.sh /actuator/health/readiness` → ALB healthy 검증 → `stop-old-color.sh <old>` |
-| `deploy.sh` 종료 코드 | 0 = 새 색상 활성화 성공 (stdout 마지막 줄 = old color) / 1 = 실패 (이전 색상 자동 복구됨, ALB 영향 없음) |
+| 호출 순서 | (1) 오케스트레이터가 active color 판별 → (2) `deploy.sh /actuator/health/readiness` → (3) ALB healthy 검증 → (4) `stop-old-color.sh <old>` |
+| active color 판별 방식 | 오케스트레이터가 deploy 직전에 SSM 으로 EC2 의 `nginx/conf.d/upstream.conf` (1순위, 트래픽이 가는 곳) → `state/active_color` (2순위) → `docker ps` (3순위 fallback) 순으로 직접 읽어 결정. **deploy.sh 의 stdout 은 파싱하지 않음.** |
+| `deploy.sh` 종료 코드 | 0 = 새 색상 활성화 성공 (state 파일 + nginx upstream 모두 새 color 로 갱신됨) / 1 = 실패 (이전 색상 자동 복구됨, ALB 영향 없음) |
 | ALB healthy 실패 시 롤백 | 오케스트레이터가 `nginx/templates/upstream-<old>.conf` → `nginx/conf.d/upstream.conf` 덮어쓰고 nginx reload. `stop-old-color.sh` 호출하지 않음 |
 
 ### 운영 주의사항
