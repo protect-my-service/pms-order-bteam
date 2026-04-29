@@ -9,10 +9,12 @@
 #   2) 반대 색상(target)을 새 이미지로 기동 후 readiness 폴링
 #   3) nginx upstream을 target으로 스왑하고 reload
 #      (nginx -t 실패 시 자동으로 active로 되돌리고 target stop → exit 1)
-#   4) state 파일 갱신
+#   4) state 파일 갱신 (active_color)
 #   5) old color는 stop 하지 않음 — ALB healthy 검증 후 호출자가 stop-old-color.sh 호출
 #
-# 표준 출력 마지막 줄: 직전 active color (호출자가 stop-old-color.sh 인자로 사용)
+# 호출자는 active color 를 stdout 마커가 아니라 nginx upstream.conf 또는 state 파일을
+# 직접 읽어서 판별한다 (bteam-jenkins detectActiveColor() 참고). 따라서 deploy.sh 의
+# stdout 출력은 contractual 의미가 없다 — 진행 로그는 stderr (log()), stdout 은 비움.
 
 set -euo pipefail
 
@@ -82,6 +84,3 @@ $COMPOSE exec -T nginx nginx -s reload
 mkdir -p "$STATE_DIR"
 echo "$target" > "$STATE_FILE"
 log "switched to $target — old color $active still running for safe rollback"
-
-# stdout 마지막 줄 = old color
-echo "$active"
