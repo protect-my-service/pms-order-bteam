@@ -34,10 +34,11 @@ logs/
 spring.log
 
 # ===== Application secrets =====
+# application-prod.yml 은 시크릿을 직접 담지 않는다. Spring Cloud AWS
+# Parameter Store import 선언과 prod 전용 설정만 두고, 실제 시크릿 값은
+# SSM 에서 가져오므로 commit 하여 jar 산출물에 항상 포함되도록 한다.
 application-secret.yml
 application-secret.properties
-application-prod.yml
-application-prod.properties
 *.env
 .env
 
