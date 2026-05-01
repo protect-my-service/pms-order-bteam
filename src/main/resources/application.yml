@@ -54,12 +54,30 @@ spring:
     listener:
       simple:
         acknowledge-mode: auto
+        concurrency: 2
+        max-concurrency: 8
+        prefetch: 10
+        default-requeue-rejected: false
         retry:
-          enabled: true
-          max-attempts: 3
+          enabled: false
 
 order:
   cancel:
     allowed-hours: 1
     allow-partial: true
     max-items-per-request: 50
+
+consumer:
+  simulation:
+    enabled: true
+    failure-rate: 0.005
+    delay:
+      order-created:
+        min-ms: 50
+        max-ms: 150
+      order-paid:
+        min-ms: 100
+        max-ms: 300
+      order-cancelled:
+        min-ms: 50
+        max-ms: 200
