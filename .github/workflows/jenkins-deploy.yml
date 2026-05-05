@@ -1,0 +1,33 @@
+name: Trigger Jenkins Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: jenkins-deploy-main
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST to Jenkins buildWithParameters
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_API_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHA="${GITHUB_SHA::7}"
+          HTTP_CODE=$(curl -sS -o /tmp/jenkins.out -w "%{http_code}" \
+            -u "$JENKINS_USER:$JENKINS_API_TOKEN" \
+            -X POST \
+            "$JENKINS_URL/job/pms-order-bteam/buildWithParameters" \
+            --data-urlencode "APP_REF=main" \
+            --data-urlencode "IMAGE_TAG=${SHA}-gha${GITHUB_RUN_NUMBER}")
+          echo "Jenkins responded HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" != "201" ]; then
+            cat /tmp/jenkins.out
+            exit 1
+          fi
