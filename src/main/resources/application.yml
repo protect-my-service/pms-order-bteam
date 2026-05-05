@@ -1,5 +1,8 @@
 server:
   port: ${SERVER_PORT:8080}
+  tomcat:
+    mbeanregistry:
+      enabled: true
 
 management:
   endpoint:
@@ -19,6 +22,10 @@ management:
   metrics:
     tags:
       application: pms-order
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        hikaricp.connections.acquire: true
 
 spring:
   profiles:
