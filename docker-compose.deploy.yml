@@ -13,6 +13,14 @@ services:
       - blue
       - green
     restart: unless-stopped
+    labels:
+      - "autoheal=true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/healthz >/dev/null 2>&1 || wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   blue:
     image: ${ECR_REPO}:${IMAGE_TAG:-latest}
@@ -26,6 +34,8 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    labels:
+      - "autoheal=true"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8087/actuator/health/readiness"]
       interval: 10s
@@ -45,12 +55,27 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    labels:
+      - "autoheal=true"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8088/actuator/health/readiness"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 60s
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: pms-autoheal
+    restart: always
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=10
+      - AUTOHEAL_START_PERIOD=0
+      - AUTOHEAL_DEFAULT_STOP_TIMEOUT=15
+      - DOCKER_SOCK=/var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   app-network:
