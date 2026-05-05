@@ -11,6 +11,7 @@ concurrency:
 jobs:
   trigger:
     runs-on: ubuntu-latest
+    environment: JENKINS
     steps:
       - name: POST to Jenkins buildWithParameters
         env:
@@ -19,11 +20,15 @@ jobs:
           JENKINS_API_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
         run: |
           set -euo pipefail
+          : "${JENKINS_URL:?secret is empty — Settings → Environments → JENKINS}"
+          : "${JENKINS_USER:?secret is empty — Settings → Environments → JENKINS}"
+          : "${JENKINS_API_TOKEN:?secret is empty — Settings → Environments → JENKINS}"
+          BASE="${JENKINS_URL%/}"
           SHA="${GITHUB_SHA::7}"
           HTTP_CODE=$(curl -sS -o /tmp/jenkins.out -w "%{http_code}" \
             -u "$JENKINS_USER:$JENKINS_API_TOKEN" \
             -X POST \
-            "$JENKINS_URL/job/pms-order-bteam/buildWithParameters" \
+            "$BASE/job/pms-order-bteam/buildWithParameters" \
             --data-urlencode "APP_REF=main" \
             --data-urlencode "IMAGE_TAG=${SHA}-gha${GITHUB_RUN_NUMBER}")
           echo "Jenkins responded HTTP $HTTP_CODE"
