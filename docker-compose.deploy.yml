@@ -29,11 +29,14 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-staging}
       - SERVER_PORT=8087
+      - LOG_PATH=/var/log/app
     expose:
       - "8087"
     networks:
       - app-network
     restart: unless-stopped
+    volumes:
+      - ./logs/blue:/var/log/app
     labels:
       - "autoheal=true"
     healthcheck:
@@ -50,11 +53,14 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-staging}
       - SERVER_PORT=8088
+      - LOG_PATH=/var/log/app
     expose:
       - "8088"
     networks:
       - app-network
     restart: unless-stopped
+    volumes:
+      - ./logs/green:/var/log/app
     labels:
       - "autoheal=true"
     healthcheck:
