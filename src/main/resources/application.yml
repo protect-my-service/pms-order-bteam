@@ -88,3 +88,18 @@ consumer:
       order-cancelled:
         min-ms: 50
         max-ms: 200
+
+logging:
+  file:
+    path: ${LOG_PATH:./logs}
+
+app:
+  access-log:
+    enabled: true
+    max-body-bytes: 51200
+    redact-keys:
+      - password
+      - accessToken
+      - refreshToken
+      - cardNumber
+      - cvc

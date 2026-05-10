@@ -27,6 +27,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
     implementation(platform("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.1"))
     implementation("io.awspring.cloud:spring-cloud-aws-starter-parameter-store")
 
